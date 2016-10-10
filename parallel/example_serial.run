@@ -1,0 +1,10 @@
+#PBS -l nodes=1:ppn=1
+#PBS -l walltime=10:00:00
+#PBS -q una
+#PBS -j oe
+#PBS -M kfuzesi@hamilton.edu
+#PBS -m ea
+
+cd $PBS_O_WORKDIR
+
+./hedonics
