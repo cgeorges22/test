@@ -181,7 +181,7 @@ int main(int argc, char **argv) {
   for(int i=0;i<randSeedEnd-randSeedStart+1;i++) {mean[i]=0;}
   for(int i=0;i<randSeedEnd-randSeedStart+1;i++) {vol[i]=0;}
   
-  //test top loop: running mulitple runs
+  //test top loop: running mulitple runs JKR
   for (int k = 0; k < runs; k++) {
   //top loop: loop over random seeds for multiple runs
   for(randSeed = randSeedStart; randSeed <= randSeedEnd; randSeed ++) { //7/5/09
