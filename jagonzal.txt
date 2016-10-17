@@ -1,2 +1,0 @@
-hello this is john's file to understand git
-Hopefully I dont suck at it  ;)
