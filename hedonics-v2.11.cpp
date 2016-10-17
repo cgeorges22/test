@@ -225,9 +225,9 @@ int main(int argc, char **argv) {
 
   //top loop: loop over random seeds for multiple runs
   for(randSeed = randSeedStart; randSeed <= randSeedEnd; randSeed ++) { //7/5/09
- // if(rank == (randSeedEnd - randSeed) % size){  //JKR 10/14/16 make seperate processor run different seeds
+  if(rank == (randSeedEnd - randSeed) % size){  //JKR 10/14/16 make seperate processor run different seeds
     
-    if(randSeed == nextSeed){
+    //if(randSeed == nextSeed){ work in progress 10/17/16
     currentSeed++;
     MPI_Allreduce(&currentSeed, &nextSeed, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
     //set random seed for the current run
