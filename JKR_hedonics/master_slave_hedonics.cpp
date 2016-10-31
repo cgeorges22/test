@@ -39,20 +39,12 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
-#include <string>  //JKR 10/7/16
-#include <sstream> //JKR 10/7/16
 #include "hedonics-firm-v2.10.h"
 #include "hedonics-utilities-v2.10.h"
 #include "time.h"
-#include "mpi.h"
 #include <cassert> //7/4/09
 #include <cstring>
-#include <deque> //JKR 10/31/16
-#define MASTER 0
-#define WORKTAG 2
-#define DIETAG 3
-#define NEEDWORK 4
-using namespace std; //JKR 10/12/16
+
 //for mac and hpc removed bools from input.txt
 //but also removed the intermediate "saved_" versions of the input.txt variables and just directly input them in main()
 
@@ -128,60 +120,20 @@ double testParam; //5/29/16
 int randSeedStart; //8/10/16
 int randSeedEnd; //8/10/16
 
-int nextSeed;
 
 void getInput();
-string IntToStr(int t); //jagonzal added this function 10/7/16
-void master();
-void slave();
 
 // Main Function
 int main(int argc, char **argv) {
-
-
-  //Parallelization begins here 10/7/16 
-   string data1;
-   string data2;
-   string data3;
-   string data4;
-   string data5;
-   string testfile;
-    
-   int currentSeed;
-
-   int rank, size; //JKR 10/7/16 used for
-   MPI_Init(&argc,&argv);
-   MPI_Comm_rank(MPI_COMM_WORLD, &rank); 
-   MPI_Comm_size(MPI_COMM_WORLD, &size);
-
-
-
-  data1 = "P"+IntToStr(rank)+"data1.txt";  
-  data2 = "P"+IntToStr(rank)+"data2.txt"; 
-  data3 = "P"+IntToStr(rank)+"data3.txt"; 
-  data4 = "P"+IntToStr(rank)+"data4.txt"; 
-  data5 = "P"+IntToStr(rank)+"data5.txt"; 
-  testfile = "P"+IntToStr(rank)+"test.txt"; 
   
-  if(rank ==  MASTER) master();
-  else slave();
-
   //output files
-  std::ofstream output1;		//output timm series of aggregate data
-  std::ofstream output2;		//output last round firm distributions of size, productivity, etc.
-  std::ofstream output3;		//output time series for six representative firms
-  std::ofstream output4;		//output last round firm dist of hedonic quality vectors and final demand shares
-  std::ofstream output5;		//output mean and volatility of Yc for each randSeed //7/6/09	
-  std::ofstream testoutput;	//track firm 6 if anotation switch is on
+  std::ofstream output1("data1.txt");		//output timm series of aggregate data
+  std::ofstream output2("data2.txt");		//output last round firm distributions of size, productivity, etc.
+  std::ofstream output3("data3.txt");		//output time series for six representative firms
+  std::ofstream output4("data4.txt");		//output last round firm dist of hedonic quality vectors and final demand shares
+  std::ofstream output5("data5.txt");		//output mean and volatility of Yc for each randSeed //7/6/09	
+  std::ofstream testoutput("test.txt");	//track firm 6 if anotation switch is on
   
- output1.open(data1.c_str());  
- output2.open(data2.c_str()); 
- output3.open(data3.c_str()); 
- output4.open(data4.c_str()); 
- output5.open(data5.c_str()); 
- testoutput.open(testfile.c_str()); 
-
-
   //for looping over random seeds
   int randSeed; //7/5/09
   //int randSeedStart = 10; //12 // moved to input.txt 8/10/16
@@ -190,7 +142,6 @@ int main(int argc, char **argv) {
   double vol[randSeedEnd - randSeedStart + 1]; //7/6/09
   
   //more declarations
-  
   int i,j, round, restarts;
   double totOutput, totUtility, totUtilityPL, totUtilityOH, lastOutput, secs, mutScale, totProdLEmployment, totOHLEmployment;
   bool commonShocks, imitation, anotation, altPriceIndex, cesHedonics, debugging;
@@ -198,15 +149,12 @@ int main(int argc, char **argv) {
   bool twoClasses; //5/12/16 alow two consumer/firm classes/submarkets
   bool endogN1N2; //5/29/16 endogenous switching of firms to high profit market
   time_t startTime, endTime;
-  
-
 
   //initializaation
   getInput(); // ints and reals from input.txt -- set bools below here
   
-  nextSeed = randSeedStart;
-  currentSeed = randSeedStart;
-
+  
+    
   cesHedonics = true;
   discChoice = true;
   endogInnovation = true;
@@ -232,14 +180,9 @@ int main(int argc, char **argv) {
   for(int i=0;i<randSeedEnd-randSeedStart+1;i++) {mean[i]=0;}
   for(int i=0;i<randSeedEnd-randSeedStart+1;i++) {vol[i]=0;}
   
-
   //top loop: loop over random seeds for multiple runs
   for(randSeed = randSeedStart; randSeed <= randSeedEnd; randSeed ++) { //7/5/09
-  if(rank == (randSeedEnd - randSeed) % size){  //JKR 10/14/16 make seperate processor run different seeds
     
-    //if(randSeed == nextSeed){ work in progress 10/17/16
-    currentSeed++;
-    MPI_Allreduce(&currentSeed, &nextSeed, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
     //set random seed for the current run
     srand(randSeed); 
 
@@ -255,22 +198,18 @@ int main(int argc, char **argv) {
     //set random seed for the current run //moved above 10-6-10
     //srand(randSeed); 
     
-    //printf("Processor %d randSeed = %d \n",rank ,randSeed); //7/5/09 rank added 10/7/16
-    //print some basic info if statement add 10/7/16
-  //  if(rank == MASTER){
-         printf("Processor %d with RandSeed value is %d\n",rank,randSeed);
-   	 printf("Number of rounds is %d\n",rounds);
-   	 //printf("randSeed = %d \n", randSeed); //7/5/09
-   	 printf("number of firms is %d \n", firmNum);  
-    	printf("size of firm is %lu B; size of population is %f MB \n", sizeof(firm), (double) firmNum * (double) sizeof(firm) /1000000 ); //%d changed to %ul (unsigned long) 6-14-15
-    	printf("intensity of choics is %f \n", intensityOfChoice); //7-12-15
-    	printf("weightRandDDC is %f \n", weightRandDDC); //5/28/16
-    	printf("endConsumerSearch is %d \n", endConsumerSearch); //5/28/16
-    	printf("testParam is %f \n", testParam); //5/28/16
+    //print some basic info
+    printf("randSeed = %d \n", randSeed); //7/5/09
+    printf("number of firms is %d \n", firmNum);  
+    printf("size of firm is %lu B; size of population is %f MB \n", sizeof(firm), (double) firmNum * (double) sizeof(firm) /1000000 ); //%d changed to %ul (unsigned long) 6-14-15
+    printf("intensity of choics is %f \n", intensityOfChoice); //7-12-15
+    printf("weightRandDDC is %f \n", weightRandDDC); //5/28/16
+    printf("endConsumerSearch is %d \n", endConsumerSearch); //5/28/16
+    printf("testParam is %f \n", testParam); //5/28/16
 	printf("probRandDInvestMutation is %f \n", probRandDInvestMutation); //5/28/16
 	printf("probSwitchMarkets to higher profit market at restart is %f \n", probSwitchMarkets); //5/29/16
 	printf("probRandomSwitchMarkets at restart is %f \n", probRandomSwitchMarkets); //6/8/16
-//	}
+	
 	
     //testoutput << "number of rounds is " << rounds << "\n";
     //testoutput << "number of firms is " << firmNum << "\n";
@@ -438,9 +377,9 @@ int main(int argc, char **argv) {
       //printf("RandD overall and in markets 1 and 2 are %d %d and %d \n", numRandD, numRandD1, numRandD2 );
       
       //output main time series to output1 (for first randSeed only) (and before restarts)
-      if(round >= startOutput1 && round % outputFrequency == 0){// && randSeed == randSeedStart){  //6/02/09 added totUtility, removed avQual 6/8/09 add nomGDP realGDP gdpdeflator
+      if(round >= startOutput1 && round % outputFrequency == 0 && randSeed == randSeedStart){  //6/02/09 added totUtility, removed avQual 6/8/09 add nomGDP realGDP gdpdeflator
 		if(debugging){printf("output1 for round %d \n", round + 1);} //8/2/09 
-		output1 << rank << " " <<randSeed<< " " <<round << " " << totOutput << " " << gdpDeflator << " "
+		output1 << round << " " << totOutput << " " << gdpDeflator << " "
 			//<< nomGDP << " " << realGDP << " "  
 			<< firmNum1 << " " << firmNum2 << " " 
 			<< totUtility << " " << totUtilityPL << " " << totUtilityOH  << " "
@@ -539,15 +478,13 @@ int main(int argc, char **argv) {
     time(&endTime);
     secs = difftime(endTime, startTime);
     printf("Done Running Simulation. \n" ); 
-    printf("Processor %d Simulation took %f minutes. \n",rank, secs/60);
+    printf("Simulation took %f minutes. \n", secs/60);
     
     //testoutput (for first randSeed only)
     if(randSeed == randSeedStart){testoutput << "simulation took " << secs/60 << " minutes " << "\n";}
     
     delete[] firms; //7/6/09 
     firms = NULL; //7/6/09
-
-  } //JKR 10/14/16 end of rank == randSeedEnd - randSeedStart % size if condition 
     
   } //end for randSeed loop
   
@@ -561,7 +498,7 @@ int main(int argc, char **argv) {
   
   system("PAUSE"); //only for windows
   
-  MPI_Finalize();
+  
   return 0;
   
 } //end main
@@ -772,19 +709,4 @@ void toBool(bool & var, char * val) {
     var = true;
   else
     var = false;
-}
-
-std::string IntToStr(int t){
-  stringstream result;
-  result << t;
-  return result.str();
-}
-
-void master(){
-	int rank, ntasks;
-	deque<int>globalQueue;
-	MPI_Status status;
-	MPI_Comm_size(MPI_COMM_WORLD, &ntasks);
-
-
 }
