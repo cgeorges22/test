@@ -1,6 +1,6 @@
 firmNum  1000
 rounds  5000
-randSeedStart 10
+randSeedStart 1
 randSeedEnd 10
 startOutput1  1
 outputFrequency  10
