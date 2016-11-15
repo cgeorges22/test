@@ -26,11 +26,10 @@ using namespace std;
 
 double master(int numSearchTrials);
 void slave(int rank);
-void getSeeds(int& start, int& end);
 
 int main(){
   
-  int size, rank, perJobs, utility;
+  int size, rank;
 
   MPI_Init(0, 0);  
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -53,39 +52,18 @@ void slave(int rank){
    for(;;){
 
    MPI_Recv(&utility,1,MPI_DOUBLE,MASTER,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
-      
+   
+   
    if(status.MPI_TAG == DIETAG){
      return;
    }
   
    utility = SearchTrialLoop(utility);
 
+
    //printf("processor %d has randSeed %d\n", rank, randSeed); 
 
-   MPI_Send(&utility,0,MPI_DOUBLE,MASTER,NEEDWORK,MPI_COMM_WORLD);
+   MPI_Send(&utility,1,MPI_DOUBLE,MASTER,NEEDWORK,MPI_COMM_WORLD);
    }
-}
-
-
-void getSeeds(int& start, int& end){
-  char line[256];
-  char* variable;
-  char* value;
-  // Uses the file "input.txt"
-  std::fstream input;
-  input.open("input.txt", std::fstream::in);
-  
-  // Go through the input file line by line, tokenize the line into three strings
-  input.getline(line, 256);
-  variable = strtok(line, " ");
-
-  while (strcmp(variable, "randSeedStart")) {
-    input.getline(line, 256);
-    variable = strtok(line, " ");
-  }
-  start = atoi(strtok(NULL, " "));
-  input.getline(line, 256);
-  strtok(line, " ");
-  end = atoi(strtok(NULL, " ")); 
 }
 

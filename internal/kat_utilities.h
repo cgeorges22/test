@@ -24,8 +24,7 @@ using namespace std;
 
 
 double SearchTrialLoop(double utility){
-	utility++;
-	printf("here: %d\n", utility);
+	utility += 1;
 	return utility;
 }
 
@@ -38,8 +37,7 @@ double master(int numSearchTrials){
   MPI_Status status;
   MPI_Comm_size(MPI_COMM_WORLD, &ntasks);
  
-
-//Fills the Global Queue                            
+  //Fills the Global Queue                            
   for(int i = 0; i <= totalJobs; i++){
     globalQueue.push_back(i); 
   //  printf("%d, ", globalQueue[i]);
@@ -47,7 +45,7 @@ double master(int numSearchTrials){
 //   printf("\n");
 
 
-  double utility = 0, altUtility = 0;
+    double utility = 0, altUtility = 0;
     
     //intialize mass seed distribution
     for(rank = 1; rank < ntasks; rank++){
@@ -60,8 +58,8 @@ double master(int numSearchTrials){
  
   while(!globalQueue.empty()){
 
-   globalQueue. pop_front();
-   MPI_Recv(&utility, 0, MPI_DOUBLE, MPI_ANY_SOURCE, NEEDWORK,MPI_COMM_WORLD,&status);
+   globalQueue.pop_front();
+   MPI_Recv(&utility, 1, MPI_DOUBLE, MPI_ANY_SOURCE, NEEDWORK,MPI_COMM_WORLD,&status);
 
    if (utility > altUtility){
 	altUtility = utility;
@@ -74,11 +72,11 @@ double master(int numSearchTrials){
   int waiting_on = numSearchTrials < ntasks ? numSearchTrials : ntasks;
 
   for(rank = 1; rank < waiting_on; rank++ ){
-    MPI_Recv(&utility, 0, MPI_DOUBLE, MPI_ANY_SOURCE, NEEDWORK,MPI_COMM_WORLD,&status);	
+    MPI_Recv(&utility, 1, MPI_DOUBLE, MPI_ANY_SOURCE, NEEDWORK,MPI_COMM_WORLD,&status);	
 
-   if (utility > altUtility){
+    if (utility > altUtility){
 	altUtility = utility;
-   }
+    } 
 
     MPI_Send(0,0,MPI_DOUBLE, rank, DIETAG, MPI_COMM_WORLD);
   } 
@@ -88,13 +86,16 @@ double master(int numSearchTrials){
    return altUtility;
   }//end of master function
 
-int func1(){
+double func1(){
 
-	int numSearchTrials = 10, max_u;
+	int numSearchTrials = 10;
+	double max_u;
 
 	// call master 
 	max_u = master(numSearchTrials);
 
-	printf("%d\n", max_u);
+	cout << max_u << endl;
+
+	return max_u;
 }
 

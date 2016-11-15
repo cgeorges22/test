@@ -6,5 +6,4 @@ using namespace std;
 int simulation(){
 
 	func1();
-
 }
