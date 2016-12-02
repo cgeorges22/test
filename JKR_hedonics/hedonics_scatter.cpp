@@ -134,25 +134,10 @@ int main(int argc, char **argv) {
 
 
   //Parallelization begins here 10/7/16 
-   string data1;
-   string data2;
-   string data3;
-   string data4;
-   string data5;
-   string testfile;
-
    int rank, size; //JKR 10/7/16 used for
    MPI_Init(&argc,&argv);
    MPI_Comm_rank(MPI_COMM_WORLD, &rank); 
    MPI_Comm_size(MPI_COMM_WORLD, &size);
-
-  data1 = "P"+IntToStr(rank)+"data1.txt";  
-  data2 = "P"+IntToStr(rank)+"data2.txt"; 
-  data3 = "P"+IntToStr(rank)+"data3.txt"; 
-  data4 = "P"+IntToStr(rank)+"data4.txt"; 
-  data5 = "P"+IntToStr(rank)+"data5.txt"; 
-  testfile = "P"+IntToStr(rank)+"test.txt"; 
-  
 
   //output files
   std::ofstream output1;		//output timm series of aggregate data
@@ -162,20 +147,20 @@ int main(int argc, char **argv) {
   std::ofstream output5;		//output mean and volatility of Yc for each randSeed //7/6/09	
   std::ofstream testoutput;	//track firm 6 if anotation switch is on
   
- output1.open(data1.c_str(),fstream::app);  
- output2.open(data2.c_str(),fstream::app); 
- output3.open(data3.c_str(),fstream::app); 
- output4.open(data4.c_str(),fstream::app); 
- output5.open(data5.c_str(),fstream::app); 
- testoutput.open(testfile.c_str(),fstream::app); 
+ output1.open("data1.txt",fstream::app);  
+ output2.open("data2.txt",fstream::app); 
+ output3.open("data3.txt",fstream::app); 
+ output4.open("data4.txt",fstream::app); 
+ output5.open("data5.txt",fstream::app); 
+ testoutput.open("test.txt",fstream::app); 
 
 
   //for looping over random seeds
   int randSeed; //7/5/09
   //int randSeedStart = 10; //12 // moved to input.txt 8/10/16
   //int randSeedEnd = 10; //12 // moved to input.txt 8/10/16
-  double mean[randSeedEnd - randSeedStart + 1]; //7/6/09
-  double vol[randSeedEnd - randSeedStart + 1]; //7/6/09
+ 
+ 
   
   //more declarations
   
@@ -192,6 +177,10 @@ int main(int argc, char **argv) {
   //initializaation
   getInput(); // ints and reals from input.txt -- set bools below here
   
+  double* mean= new double[randSeedEnd - randSeedStart + 1]; //7/6/09
+  double* vol= new double[randSeedEnd - randSeedStart + 1]; //7/6/09
+
+
   //10/26/16 JKR Initalization for rand seed distribution to processors 
   int totalJobs, perJobs;
   totalJobs = randSeedEnd - randSeedStart;
@@ -559,6 +548,9 @@ int main(int argc, char **argv) {
 
   delete [] randSeedArry;
   delete [] jobQueueArry;
+
+  delete [] vol;
+  delete [] mean;
   
     //close output files at end of all runs
   output1.close();
@@ -568,7 +560,7 @@ int main(int argc, char **argv) {
   output5.close(); //7/6/09
   testoutput.close();
   
-  system("PAUSE"); //only for windows
+  //system("PAUSE"); //only for windows
   
   MPI_Finalize();
   return 0;

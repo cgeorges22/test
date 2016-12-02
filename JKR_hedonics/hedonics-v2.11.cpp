@@ -124,8 +124,6 @@ double testParam; //5/29/16
 int randSeedStart; //8/10/16
 int randSeedEnd; //8/10/16
 
-int nextSeed;
-
 void getInput();
 string IntToStr(int t); //jagonzal added this function 10/7/16
 
@@ -140,20 +138,18 @@ int main(int argc, char **argv) {
    string data4;
    string data5;
    string testfile;
-    
-   int currentSeed;
 
    int rank, size; //JKR 10/7/16 used for
    MPI_Init(&argc,&argv);
    MPI_Comm_rank(MPI_COMM_WORLD, &rank); 
    MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  data1 = "P"+IntToStr(rank)+"data1.txt";  
-  data2 = "P"+IntToStr(rank)+"data2.txt"; 
-  data3 = "P"+IntToStr(rank)+"data3.txt"; 
-  data4 = "P"+IntToStr(rank)+"data4.txt"; 
-  data5 = "P"+IntToStr(rank)+"data5.txt"; 
-  testfile = "P"+IntToStr(rank)+"test.txt"; 
+  data1 = "data1.txt";  
+  data2 = "data2.txt"; 
+  data3 = "data3.txt"; 
+  data4 = "data4.txt"; 
+  data5 = "data5.txt"; 
+  testfile = "test.txt"; 
   
 
   //output files
@@ -164,21 +160,20 @@ int main(int argc, char **argv) {
   std::ofstream output5;		//output mean and volatility of Yc for each randSeed //7/6/09	
   std::ofstream testoutput;	//track firm 6 if anotation switch is on
   
- output1.open(data1.c_str());  
- output2.open(data2.c_str()); 
- output3.open(data3.c_str()); 
- output4.open(data4.c_str()); 
- output5.open(data5.c_str()); 
- testoutput.open(testfile.c_str()); 
+ output1.open(data1.c_str(),ios_base::app);  
+ output2.open(data2.c_str(),ios_base::app); 
+ output3.open(data3.c_str(),ios_base::app); 
+ output4.open(data4.c_str(),ios_base::app); 
+ output5.open(data5.c_str(),ios_base::app); 
+ testoutput.open(testfile.c_str(),ios_base::app); 
 
 
   //for looping over random seeds
   int randSeed; //7/5/09
   //int randSeedStart = 10; //12 // moved to input.txt 8/10/16
   //int randSeedEnd = 10; //12 // moved to input.txt 8/10/16
-  double mean[randSeedEnd - randSeedStart + 1]; //7/6/09
-  double vol[randSeedEnd - randSeedStart + 1]; //7/6/09
   
+
   //more declarations
   
   int i,j, round, restarts;
@@ -193,9 +188,9 @@ int main(int argc, char **argv) {
 
   //initializaation
   getInput(); // ints and reals from input.txt -- set bools below here
-  
-  nextSeed = randSeedStart;
-  currentSeed = randSeedStart;
+
+  double* mean= new double[randSeedEnd - randSeedStart + 1]; //7/6/09
+  double* vol= new double[randSeedEnd - randSeedStart + 1]; //7/6/09
 
   cesHedonics = true;
   discChoice = true;
@@ -228,8 +223,7 @@ int main(int argc, char **argv) {
   if(rank == (randSeedEnd - randSeed) % size){  //JKR 10/14/16 make seperate processor run different seeds
     
     //if(randSeed == nextSeed){ work in progress 10/17/16
-    currentSeed++;
-    MPI_Allreduce(&currentSeed, &nextSeed, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+
     //set random seed for the current run
     srand(randSeed); 
 
@@ -403,7 +397,7 @@ int main(int argc, char **argv) {
 	  totProdLEmployment = wageBill/wage; //5/13/16
 	  totOHLEmployment = salaryBill/salary; //5/13/16
 	  if(round == 1000) {
-		printf("total output and R&D are %f and %f \n", totOutput, numRandD);
+		printf("total output and R&D are %f and %d \n", totOutput, numRandD);
 		printf("total employment of production labor and OH labor are %f and %f \n", totProdLEmployment , totOHLEmployment);
      	printf("total wageBill and salaryBill are %f and %f \n", wageBill, salaryBill);
      	printf("total Utility of PL and OHL are %f and %f \n", totUtilityPL, totUtilityOH);
@@ -540,6 +534,9 @@ int main(int argc, char **argv) {
   } //JKR 10/14/16 end of rank == randSeedEnd - randSeedStart % size if condition 
     
   } //end for randSeed loop
+
+  delete[] vol;
+  delete[] mean;
   
     //close output files at end of all runs
   output1.close();
@@ -549,7 +546,7 @@ int main(int argc, char **argv) {
   output5.close(); //7/6/09
   testoutput.close();
   
-  system("PAUSE"); //only for windows
+  //system("PAUSE"); //only for windows
   
   MPI_Finalize();
   return 0;
