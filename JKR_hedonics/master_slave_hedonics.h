@@ -132,8 +132,6 @@ int randSeedEnd; //8/10/16
 
 void getInput();
 string IntToStr(int t); //jagonzal added this function 10/7/16
-//void master();
-//void slave();
 
 // Main Function
 int simulation(int randSeed, int rank) {
@@ -146,10 +144,6 @@ int simulation(int randSeed, int rank) {
    string data4;
    string data5;
    string testfile;
-    
-     
- // if(rank ==  MASTER) master();
-  //else slave();
 
   //output files
   std::ofstream output1("data1.txt",ios_base::app);	//output timm series of aggregate data
@@ -162,11 +156,6 @@ int simulation(int randSeed, int rank) {
 
 
   //for looping over random seeds
- 
-
-
-  double mean[randSeedEnd - randSeedStart + 1]; //7/6/09
-  double vol[randSeedEnd - randSeedStart + 1]; //7/6/09
   
   //more declarations
   
@@ -180,10 +169,12 @@ int simulation(int randSeed, int rank) {
   
 
 
-  //initializaation
+  //initialization
   getInput(); // ints and reals from input.txt -- set bools below here
   
  
+  double* mean = new double[randSeedEnd - randSeedStart + 1]; //12/5/16 JKR
+  double* vol = new double[randSeedEnd - randSeedStart + 1]; //12/5/16 JKR
   
 
   cesHedonics = true;
@@ -525,8 +516,10 @@ int simulation(int randSeed, int rank) {
     
     delete[] firms; //7/6/09 
     firms = NULL; //7/6/09
- //} end randSeed loop 
+
     //close output files at end of all runs
+  delete[] mean;
+  delete[] vol;
   output1.close();
   output2.close();
   output3.close();
@@ -535,8 +528,7 @@ int simulation(int randSeed, int rank) {
   testoutput.close();
   
   system("PAUSE"); //only for windows
-  
-  //MPI_Finalize();
+   
   return 0;
   
 } //end main

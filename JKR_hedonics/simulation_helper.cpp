@@ -33,9 +33,9 @@ int main(int argc, char *argv[]){
   int start, end;
 
   getSeeds(start,end);
- //Getting the inputs
+  //Got the inputs
 
-  MPI_Init(&argc, &argv);  
+  MPI_Init(0, 0);  
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
  
@@ -56,33 +56,31 @@ void master(int start, int end){
   MPI_Comm_size(MPI_COMM_WORLD, &ntasks);
  
 
-//Fills the Global Queue
+  // Fills the Global Queue
   int temp = start;                                    
   for(int i = 0; i <= totalJobs; i++, temp++){
     globalQueue.push_back(temp); 
-  //  printf("%d, ", globalQueue[i]);
-   } 
-//   printf("\n");
+  } 
     
-    //intialize mass seed distribution
-    for(rank = 1; rank < ntasks; rank++){
-      if(!globalQueue.empty()){
-        int buffer = globalQueue.front();
-        globalQueue.pop_front();
-        MPI_Send(&buffer, 1, MPI_INT,rank, 1, MPI_COMM_WORLD);
-      }
+  // Intialize mass seed distribution
+  for(rank = 1; rank < ntasks; rank++){
+    if(!globalQueue.empty()){
+      int buffer = globalQueue.front();
+      globalQueue.pop_front();
+      MPI_Send(&buffer, 1, MPI_INT,rank, 1, MPI_COMM_WORLD);
     }
-
-  while(!globalQueue.empty()){
-
-   int buffer = globalQueue.front();
-   globalQueue.pop_front();
-   MPI_Recv(0, 0, MPI_INT, MPI_ANY_SOURCE, NEEDWORK,MPI_COMM_WORLD,&status);
-
-   MPI_Send(&buffer, 1, MPI_INT, status.MPI_SOURCE, WORKTAG, MPI_COMM_WORLD);
-
   }
 
+  // If there are more seeds than processors, continue to distribute
+  while(!globalQueue.empty()){ 
+    int buffer = globalQueue.front();
+    globalQueue.pop_front();
+    MPI_Recv(0, 0, MPI_INT, MPI_ANY_SOURCE, NEEDWORK,MPI_COMM_WORLD,&status);
+
+    MPI_Send(&buffer, 1, MPI_INT, status.MPI_SOURCE, WORKTAG, MPI_COMM_WORLD); 
+  }
+
+  // Kill all other processors once all simulations are over
   for(rank = 1; rank < ntasks; rank++ ){
     MPI_Send(0,0,MPI_INT, rank, DIETAG, MPI_COMM_WORLD);
   } 
@@ -90,7 +88,7 @@ void master(int start, int end){
   
     
    return;
-  }//end of master function
+  } //end of master function
 
 
 void slave(int rank){
@@ -100,15 +98,16 @@ void slave(int rank){
 
    for(;;){
 
-   MPI_Recv(&randSeed,1,MPI_INT,MASTER,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+     // Receive RandSeed for simulation
+     MPI_Recv(&randSeed,1,MPI_INT,MASTER,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
       
-   if(status.MPI_TAG == DIETAG){
-     return;
-   }
-   simulation(randSeed, rank);
-   //printf("processor %d has randSeed %d\n", rank, randSeed); 
+     if(status.MPI_TAG == DIETAG){
+       return;
+     }
+     simulation(randSeed, rank);
 
-   MPI_Send(0,0,MPI_INT,MASTER,NEEDWORK,MPI_COMM_WORLD);
+     // Send back to Master that simulation is over
+     MPI_Send(0,0,MPI_INT,MASTER,NEEDWORK,MPI_COMM_WORLD);
    }
 }
 
@@ -122,6 +121,7 @@ void getSeeds(int& start, int& end){
   input.open("input.txt", std::fstream::in);
   
   // Go through the input file line by line, tokenize the line into three strings
+  // Taken from hedonics-v2.10
   input.getline(line, 256);
   variable = strtok(line, " ");
 
