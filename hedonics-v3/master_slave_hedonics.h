@@ -39,18 +39,25 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
+#include <string>  //JKR 10/7/16
+#include <sstream> //JKR 10/7/16
 #include "hedonics-firm-v2.10.h"
 #include "hedonics-utilities-v2.10.h"
 #include "time.h"
+#include "mpi.h"
 #include <cassert> //7/4/09
 #include <cstring>
-
+#include <deque> //JKR 10/31/16
+#define MASTER 0
+#define WORKTAG 2
+#define DIETAG 3
+#define NEEDWORK 4
+using namespace std; //JKR 10/12/16
 //for mac and hpc removed bools from input.txt
 //but also removed the intermediate "saved_" versions of the input.txt variables and just directly input them in main()
 
 //Global variables
 
-int runs;
 int firmNum;
 int firmNum1; //number of fims in low consumer segment (caters to production workers)
 int firmNum2; //number of firms in high consumer segment (caters to OH labor)
@@ -122,27 +129,36 @@ int randSeedStart; //8/10/16
 int randSeedEnd; //8/10/16
 
 
+
 void getInput();
+string IntToStr(int t); //jagonzal added this function 10/7/16
 
 // Main Function
-int main(int argc, char **argv) {
-  
+int simulation(int randSeed, int rank) {
+
+
+  //Parallelization begins here 10/7/16 
+   string data1;
+   string data2;
+   string data3;
+   string data4;
+   string data5;
+   string testfile;
+
   //output files
-  std::ofstream output1("data1.txt");		//output timm series of aggregate data
-  std::ofstream output2("data2.txt");		//output last round firm distributions of size, productivity, etc.
-  std::ofstream output3("data3.txt");		//output time series for six representative firms
-  std::ofstream output4("data4.txt");		//output last round firm dist of hedonic quality vectors and final demand shares
-  std::ofstream output5("data5.txt");		//output mean and volatility of Yc for each randSeed //7/6/09	
-  std::ofstream testoutput("test.txt");	//track firm 6 if anotation switch is on
+  std::ofstream output1("data1.txt",ios_base::app);	//output timm series of aggregate data
+  std::ofstream output2("data2.txt",ios_base::app);	//output last round firm distributions of size, productivity, etc.
+  std::ofstream output3("data3.txt",ios_base::app);	//output time series for six representative firms
+  std::ofstream output4("data4.txt",ios_base::app);	//output last round firm dist of hedonic quality vectors and final demand shares
+  std::ofstream output5("data5.txt",ios_base::app);	//output mean and volatility of Yc for each randSeed //7/6/09	
+  std::ofstream testoutput("test.txt",ios_base::app);	//track firm 6 if anotation switch is on
   
+
+
   //for looping over random seeds
-  int randSeed; //7/5/09
-  //int randSeedStart = 10; //12 // moved to input.txt 8/10/16
-  //int randSeedEnd = 10; //12 // moved to input.txt 8/10/16
-  double mean[randSeedEnd - randSeedStart + 1]; //7/6/09
-  double vol[randSeedEnd - randSeedStart + 1]; //7/6/09
   
   //more declarations
+  
   int i,j, round, restarts;
   double totOutput, totUtility, totUtilityPL, totUtilityOH, lastOutput, secs, mutScale, totProdLEmployment, totOHLEmployment;
   bool commonShocks, imitation, anotation, altPriceIndex, cesHedonics, debugging;
@@ -150,12 +166,17 @@ int main(int argc, char **argv) {
   bool twoClasses; //5/12/16 alow two consumer/firm classes/submarkets
   bool endogN1N2; //5/29/16 endogenous switching of firms to high profit market
   time_t startTime, endTime;
+  
 
-  //initializaation
+
+  //initialization
   getInput(); // ints and reals from input.txt -- set bools below here
   
+ 
+  double* mean = new double[randSeedEnd - randSeedStart + 1]; //12/5/16 JKR
+  double* vol = new double[randSeedEnd - randSeedStart + 1]; //12/5/16 JKR
   
-    
+
   cesHedonics = true;
   discChoice = true;
   endogInnovation = true;
@@ -181,11 +202,14 @@ int main(int argc, char **argv) {
   for(int i=0;i<randSeedEnd-randSeedStart+1;i++) {mean[i]=0;}
   for(int i=0;i<randSeedEnd-randSeedStart+1;i++) {vol[i]=0;}
   
-  //test top loop: running mulitple runs JKR 10/6/16
-  for (int k = 0; k < runs; k++) {
+
   //top loop: loop over random seeds for multiple runs
-  for(randSeed = randSeedStart; randSeed <= randSeedEnd; randSeed ++) { //7/5/09
+ //for(randSeed = randSeedStart; randSeed <= randseedEnd; randSeed++) 
+ 
     
+    //if(randSeed == nextSeed){ work in progress 10/17/16
+    
+   
     //set random seed for the current run
     srand(randSeed); 
 
@@ -201,18 +225,22 @@ int main(int argc, char **argv) {
     //set random seed for the current run //moved above 10-6-10
     //srand(randSeed); 
     
-    //print some basic info
-    printf("randSeed = %d \n", randSeed); //7/5/09
-    printf("number of firms is %d \n", firmNum);  
-    printf("size of firm is %lu B; size of population is %f MB \n", sizeof(firm), (double) firmNum * (double) sizeof(firm) /1000000 ); //%d changed to %ul (unsigned long) 6-14-15
-    printf("intensity of choics is %f \n", intensityOfChoice); //7-12-15
-    printf("weightRandDDC is %f \n", weightRandDDC); //5/28/16
-    printf("endConsumerSearch is %d \n", endConsumerSearch); //5/28/16
-    printf("testParam is %f \n", testParam); //5/28/16
+    //printf("Processor %d randSeed = %d \n",rank ,randSeed); //7/5/09 rank added 10/7/16
+    //print some basic info if statement add 10/7/16
+  //  if(rank == MASTER){
+         //printf("Processor %d with RandSeed value is %d\n",rank,randSeed);
+   	 printf("Number of rounds is %d\n",rounds);
+   	 //printf("randSeed = %d \n", randSeed); //7/5/09
+   	 printf("number of firms is %d \n", firmNum);  
+    	printf("size of firm is %lu B; size of population is %f MB \n", sizeof(firm), (double) firmNum * (double) sizeof(firm) /1000000 ); //%d changed to %ul (unsigned long) 6-14-15
+    	printf("intensity of choics is %f \n", intensityOfChoice); //7-12-15
+    	printf("weightRandDDC is %f \n", weightRandDDC); //5/28/16
+    	printf("endConsumerSearch is %d \n", endConsumerSearch); //5/28/16
+    	printf("testParam is %f \n", testParam); //5/28/16
 	printf("probRandDInvestMutation is %f \n", probRandDInvestMutation); //5/28/16
 	printf("probSwitchMarkets to higher profit market at restart is %f \n", probSwitchMarkets); //5/29/16
 	printf("probRandomSwitchMarkets at restart is %f \n", probRandomSwitchMarkets); //6/8/16
-	
+//	}
 	
     //testoutput << "number of rounds is " << rounds << "\n";
     //testoutput << "number of firms is " << firmNum << "\n";
@@ -380,9 +408,9 @@ int main(int argc, char **argv) {
       //printf("RandD overall and in markets 1 and 2 are %d %d and %d \n", numRandD, numRandD1, numRandD2 );
       
       //output main time series to output1 (for first randSeed only) (and before restarts)
-      if(round >= startOutput1 && round % outputFrequency == 0 && randSeed == randSeedStart){  //6/02/09 added totUtility, removed avQual 6/8/09 add nomGDP realGDP gdpdeflator
+      if(round >= startOutput1 && round % outputFrequency == 0){// && randSeed == randSeedStart){  //6/02/09 added totUtility, removed avQual 6/8/09 add nomGDP realGDP gdpdeflator
 		if(debugging){printf("output1 for round %d \n", round + 1);} //8/2/09 
-			output1 << " " << k << randSeed << " " <<  round << " " << totOutput << " " << gdpDeflator << " " // output k to file JKR 10/10/16
+		output1 << rank << " " <<randSeed<< " " <<round << " " << totOutput << " " << gdpDeflator << " "
 			//<< nomGDP << " " << realGDP << " "  
 			<< firmNum1 << " " << firmNum2 << " " 
 			<< totUtility << " " << totUtilityPL << " " << totUtilityOH  << " "
@@ -481,30 +509,26 @@ int main(int argc, char **argv) {
     time(&endTime);
     secs = difftime(endTime, startTime);
     printf("Done Running Simulation. \n" ); 
-    printf("Simulation took %f minutes. \n", secs/60);
+    printf("Processor %d Simulation took %f minutes. \n",rank, secs/60);
     
     //testoutput (for first randSeed only)
     if(randSeed == randSeedStart){testoutput << "simulation took " << secs/60 << " minutes " << "\n";}
     
     delete[] firms; //7/6/09 
     firms = NULL; //7/6/09
-    
-  } //end for randSeed loop
-  } 
+
     //close output files at end of all runs
+  delete[] mean;
+  delete[] vol;
   output1.close();
   output2.close();
   output3.close();
   output4.close(); //7/5/09
   output5.close(); //7/6/09
   testoutput.close();
-  time(&endTime);
-    secs = difftime(endTime, startTime);
-
-  printf("Simulation took %f minutes. \n", secs/60);
-  //system("PAUSE"); //only for windows
   
-  
+  system("PAUSE"); //only for windows
+   
   return 0;
   
 } //end main
@@ -638,10 +662,6 @@ void getInput() {
      else if (strcmp(variable, "firmNum") == 0) {
          firmNum = atoi(value);
      }
-     // 10/10/16 JKR
-     else if (strcmp(variable, "runs") == 0) {
-         runs = atoi(value);
-     }
      else if (strcmp(variable, "rounds") == 0) {
          rounds = atoi(value);
      }
@@ -719,4 +739,10 @@ void toBool(bool & var, char * val) {
     var = true;
   else
     var = false;
+}
+
+std::string IntToStr(int t){
+  stringstream result;
+  result << t;
+  return result.str();
 }

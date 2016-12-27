@@ -9,11 +9,6 @@
 #include <algorithm> //8/13/08
 #include "hedonics-firm-v2.10.h"
 #include "hedonics-utilities-v2.10.h"
-#include <deque> //JKR 10/31/16
-#define MASTER 0 //JKR
-#define WORKTAG 2 //JKR
-#define DIETAG 3 //JKR
-#define NEEDWORK 4 //JKR
 
 //Function Definitions
 
@@ -600,14 +595,74 @@ double doConsumerSearch(firm firms[], double wageBill, double salaryBill, const 
 
 }				//end doConsumerSearch
 
-void searchTrialLoop1(firm firms[], double wageBill, const int firmNum, /*const int numHedonicElelments,*/
+//consumer search for class 1 (production workers) when two consumer/firm classes
+double doConsumerSearchClass1(firm firms[], double wageBill, const int firmNum, /*const int numHedonicElelments,*/
 			std::ofstream &testoutput, int round, int numMutationPairs, int numSearchTrials, double mutScale, bool anotation, bool cesHedonics, 
-            		double cesHedonicsElastGoods, double cesHedonicsElastChars, double complementIntConstraintFactor,
-			double &utility, double &altUtility, double *shares, double *altShares, double &income, int &firm1, int &firm2){
+            double cesHedonicsElastGoods, double cesHedonicsElastChars, double complementIntConstraintFactor) {
+	
+	//shares are initialized in inititalizeFirms
+	
+	double utility = 1.0; //moved here from top of search loop 6/02/09 so that can return utility from the procedure
+	double altUtility = 1.0;
+	double *shares; //8/2/09
+	shares = new double[firmNum]; //8/2/09
+	double *altShares; //8/2/09
+	altShares = new double[firmNum]; //8/2/09
+	
+	double income; //5/13/16 to be able to combine wage and salary bills once split up
+	//int i,j; //5/27/09 redundant with below -- may want to check which is better
+	int firm1 = 0;
+	int firm2 = 0;
+	//int firm3 = 0;
+	
+	income = wageBill; //5/13/16
+	
+	//do consumer search
+	if (round >= 1) {		
+		
+        int i,j;
+				
+		//start with shares and altShares at current shares for type 1 firms and set to zero for type 2 firms
+		for(i=0;i<firmNum;i++) {
+			if (firms[i].getType()==1){	//5/13/16
+				shares[i] = firms[i].getFinalDemandShare(); //5/13/16 note -- doubled for twoClasses case in initializeFirms
+				altShares[i] = firms[i].getFinalDemandShare();
+			}
+			else {	//5/13/16
+				shares[i] = 0;  //5/13/16
+				altShares[i] = 0;
+			}		
+		}
+		/*
+		if(round==54){
+			for(j=0;j<firmNum;j++) {printf("in round 55 init share and altShre of firm %d is %f  %f  \n " , j+1, shares[j], altShares[j]);}	
+		}
+		*/
+		
 
-	    int j;
+		//now use calcUtility routine to get baseline utility -- note that shares are really half shares at this point. but ok as ces.
+		//changed wageBill to income 5/13/16 to allow separated wageBill and salaryBill -- see above
+		utility = calcUtility(firms, income, firmNum, shares, testoutput, round, anotation, cesHedonics, cesHedonicsElastGoods, cesHedonicsElastChars, complementIntConstraintFactor);		
+		/*
+        if(round == 9999 ) {
+			printf("finalDemandShare of good 6 is %f \n", altShares[5] );
+			printf("hedonic quality element 2 for good 6 is %d \n", firms[5].getHedonicQualityElementJ(1) );
+			//printf("repConsumption of good 6 is %f \n", repConsumption[5] );
+			//printf("repHedonicConsumption of element 3 is %f \n", repHedonicConsumption[1] );
+			printf("current utility is %f \n", utility );
+		}
+		*/
+		if(round==1){printf("initial utility for production workers in round 1 is %f \n", utility);}
+		//if(round==54){printf("initial utility for production workers in round 55 is %f \n", utility);}
+		
+		//now update the shares via a mutation loop: test mutation for each of numMutationPairs pairs of goods
+		int s=0;
+		int ss=0;
+		//int searchTrials = 20; //added 11/15/10 // moved to input.txt
+		//for(s=0;s<numMutationPairs;s++) { //moved below
+        for(ss=0;ss<numSearchTrials;ss++) { //11/15/10 //add here to have multiple tests as before
             int negCount = 0; //11/15/10
-            for(int s=0;s<numMutationPairs;s++) { //11/15/10 this is now nested below searchTrials - allows multiple mutation pairs before each test
+            for(s=0;s<numMutationPairs;s++) { //11/15/10 this is now nested below searchTrials - allows multiple mutation pairs before each test
                double mutFactor=0.0;
                int sss = 0; //7-15-11
 			   int integerCase = 0;
@@ -734,7 +789,7 @@ void searchTrialLoop1(firm firms[], double wageBill, const int firmNum, /*const 
 			if(round == 54) {printf("in round 55 utility is %f \n", utility );}
 			if(round == 54) {printf("in round 55 alt utility is %f \n \n", altUtility );}
 			*/		
-		
+			
             //switch to altShares (and update utility) if altUtility > utility
             if(altUtility >= utility) { //11/15/10 switched from > to <= for drift (see Miller)
             //firms[firm1].setFinalDemandShare(altShares[firm1]); //should do this indirectly via current? no
@@ -774,54 +829,60 @@ void searchTrialLoop1(firm firms[], double wageBill, const int firmNum, /*const 
             		altShares[j] = firms[j].getFinalDemandShare();
 				} //6/26/09 do for all, not just firm1 and firm2	
 			}
+			
+			
+         
+		
+        }		//end mutation loop over search trials
+		
+		//if(round==54){printf("updated utility for production workers in round 55 is %f \n", utility);}	     	
+	}			//end search 
+	
+	delete[] shares; //8/2/09
+    shares = NULL;  //8/2/09
+    delete[] altShares; //8/2/09
+    altShares = NULL; //8/2/09   
+	return utility;    //added 6/02/09
 
+}				//end doConsumerSearchClass1
 
-}  // end SearchTrialsLoop function
-
-//consumer search for class 1 (production workers) when two consumer/firm classes
-double doConsumerSearchClass1(firm firms[], double wageBill, const int firmNum, /*const int numHedonicElelments,*/
+//consumer search for class 2 (OH workers) when two consumer/firm classes
+double doConsumerSearchClass2(firm firms[], double salaryBill, const int firmNum, /*const int numHedonicElelments,*/
 			std::ofstream &testoutput, int round, int numMutationPairs, int numSearchTrials, double mutScale, bool anotation, bool cesHedonics, 
             double cesHedonicsElastGoods, double cesHedonicsElastChars, double complementIntConstraintFactor) {
 	
-	//shares are initialized in inititalizeFirms
+	//shares are initialized to equal shares in initializeFirms
 	
 	double utility = 1.0; //moved here from top of search loop 6/02/09 so that can return utility from the procedure
-	double altUtility = 1.0;
 	double *shares; //8/2/09
 	shares = new double[firmNum]; //8/2/09
 	double *altShares; //8/2/09
 	altShares = new double[firmNum]; //8/2/09
-	
+	double altUtility = 1.0;
 	double income; //5/13/16 to be able to combine wage and salary bills once split up
 	//int i,j; //5/27/09 redundant with below -- may want to check which is better
 	int firm1 = 0;
 	int firm2 = 0;
 	//int firm3 = 0;
 	
-	income = wageBill; //5/13/16
+	income = salaryBill; //5/13/16
 	
 	//do consumer search
 	if (round >= 1) {		
 		
         int i,j;
 				
-		//start with shares and altShares at current shares for type 1 firms and set to zero for type 2 firms
+		//start with shares and altShares at current shares
 		for(i=0;i<firmNum;i++) {
-			if (firms[i].getType()==1){	//5/13/16
+			if (firms[i].getType()==2){	//5/13/16
 				shares[i] = firms[i].getFinalDemandShare(); //5/13/16 note -- doubled for twoClasses case in initializeFirms
 				altShares[i] = firms[i].getFinalDemandShare();
 			}
 			else {	//5/13/16
-				shares[i] = 0;  //5/13/16
+				shares[i] = 0; //5/13/16
 				altShares[i] = 0;
 			}		
 		}
-		/*
-		if(round==54){
-			for(j=0;j<firmNum;j++) {printf("in round 55 init share and altShre of firm %d is %f  %f  \n " , j+1, shares[j], altShares[j]);}	
-		}
-		*/
-		
 
 		//now use calcUtility routine to get baseline utility -- note that shares are really half shares at this point. but ok as ces.
 		//changed wageBill to income 5/13/16 to allow separated wageBill and salaryBill -- see above
@@ -835,58 +896,15 @@ double doConsumerSearchClass1(firm firms[], double wageBill, const int firmNum, 
 			printf("current utility is %f \n", utility );
 		}
 		*/
-		if(round==1){printf("initial utility for production workers in round 1 is %f \n", utility);}
-		//if(round==54){printf("initial utility for production workers in round 55 is %f \n", utility);}
+		if(round==1){printf("initial utility for overhead workers in round 1 is %f \n", utility);}
+		//if(round==54){printf("initial utility for overhead workers in round 55 is %f \n", utility);}
 		
 		//now update the shares via a mutation loop: test mutation for each of numMutationPairs pairs of goods
 		int s=0;
 		int ss=0;
 		//int searchTrials = 20; //added 11/15/10 // moved to input.txt
 		//for(s=0;s<numMutationPairs;s++) { //moved below
-
-
-
-        //for(ss=0;ss<numSearchTrials;ss++) { //11/15/10 //add here to have multiple tests as before
-	//	searchTrialLoop1(firms, wageBill, firmNum, testoutput, round, numMutationPairs, numSearchTrials, mutScale, anotation, cesHedonics, 
-	//			cesHedonicsElastGoods, cesHedonicsElastChars, complementIntConstraintFactor, 
-	//			utility, altUtility, shares, altShares, income, firm1, firm2);	
-			
-         
-		
-        //}		//end mutation loop over search trials
-	
-
-	// parallel search trials jkr 11/11/16
-`			
-  	int size, rank, perJobs;
-
-  	MPI_Init(0, 0);
-  	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  	MPI_Comm_size(MPI_COMM_WORLD, &size);
-
-  	if(rank == MASTER) master(numSearchTrials);
-  	else slave(rank, 1);
-
-  	MPI_Finalize();
-	
-		//if(round==54){printf("updated utility for production workers in round 55 is %f \n", utility);}	     	
-	}			//end search 
-	
-	delete[] shares; //8/2/09
-    shares = NULL;  //8/2/09
-    delete[] altShares; //8/2/09
-    altShares = NULL; //8/2/09   
-	return utility;    //added 6/02/09
-
-}				//end doConsumerSearchClass1
-
-
-void searchTrialLoop2(firm firms[], double salaryBill, const int firmNum, /*const int numHedonicElelments,*/
-			std::ofstream &testoutput, int round, int numMutationPairs, int numSearchTrials, double mutScale, bool anotation, bool cesHedonics, 
-            		double cesHedonicsElastGoods, double cesHedonicsElastChars, double complementIntConstraintFactor,
-			double &utility, double &altUtility, double *shares, double *altShares, double &income, int &firm1, int &firm2) {
-	
-	    int j, s;
+        for(ss=0;ss<numSearchTrials;ss++) { //11/15/10 //add here to have multiple tests as before
             int negCount = 0; //11/15/10
             for(s=0;s<numMutationPairs;s++) { //11/15/10 this is now nested below searchTrials - allows multiple mutation pairs before each test
                double mutFactor=0.0;
@@ -1040,82 +1058,10 @@ void searchTrialLoop2(firm firms[], double salaryBill, const int firmNum, /*cons
             		altShares[j] = firms[j].getFinalDemandShare();
 				} //6/26/09 do for all, not just firm1 and firm2	
 			}
-
-}  // end search trial loop 2
-
-//consumer search for class 2 (OH workers) when two consumer/firm classes
-double doConsumerSearchClass2(firm firms[], double salaryBill, const int firmNum, /*const int numHedonicElelments,*/
-			std::ofstream &testoutput, int round, int numMutationPairs, int numSearchTrials, double mutScale, bool anotation, bool cesHedonics, 
-            double cesHedonicsElastGoods, double cesHedonicsElastChars, double complementIntConstraintFactor) {
-	
-	//shares are initialized to equal shares in initializeFirms
-	
-	double utility = 1.0; //moved here from top of search loop 6/02/09 so that can return utility from the procedure
-	double *shares; //8/2/09
-	shares = new double[firmNum]; //8/2/09
-	double *altShares; //8/2/09
-	altShares = new double[firmNum]; //8/2/09
-	double altUtility = 1.0;
-	double income; //5/13/16 to be able to combine wage and salary bills once split up
-	//int i,j; //5/27/09 redundant with below -- may want to check which is better
-	int firm1 = 0;
-	int firm2 = 0;
-	//int firm3 = 0;
-	
-	income = salaryBill; //5/13/16
-	
-	//do consumer search
-	if (round >= 1) {		
 		
-        int i,j;
-				
-		//start with shares and altShares at current shares
-		for(i=0;i<firmNum;i++) {
-			if (firms[i].getType()==2){	//5/13/16
-				shares[i] = firms[i].getFinalDemandShare(); //5/13/16 note -- doubled for twoClasses case in initializeFirms
-				altShares[i] = firms[i].getFinalDemandShare();
-			}
-			else {	//5/13/16
-				shares[i] = 0; //5/13/16
-				altShares[i] = 0;
-			}		
-		}
-
-		//now use calcUtility routine to get baseline utility -- note that shares are really half shares at this point. but ok as ces.
-		//changed wageBill to income 5/13/16 to allow separated wageBill and salaryBill -- see above
-		utility = calcUtility(firms, income, firmNum, shares, testoutput, round, anotation, cesHedonics, cesHedonicsElastGoods, cesHedonicsElastChars, complementIntConstraintFactor);		
-		/*
-        if(round == 9999 ) {
-			printf("finalDemandShare of good 6 is %f \n", altShares[5] );
-			printf("hedonic quality element 2 for good 6 is %d \n", firms[5].getHedonicQualityElementJ(1) );
-			//printf("repConsumption of good 6 is %f \n", repConsumption[5] );
-			//printf("repHedonicConsumption of element 3 is %f \n", repHedonicConsumption[1] );
-			printf("current utility is %f \n", utility );
-		}
-		*/
-		if(round==1){printf("initial utility for overhead workers in round 1 is %f \n", utility);}
-		//if(round==54){printf("initial utility for overhead workers in round 55 is %f \n", utility);}
+        }		//end mutation loop over search trials	
 		
-		//now update the shares via a mutation loop: test mutation for each of numMutationPairs pairs of goods
-		int s=0;
-		int ss=0;
-		//int searchTrials = 20; //added 11/15/10 // moved to input.txt
-		//for(s=0;s<numMutationPairs;s++) { //moved below
-        
-	// serial search trials jkr 11/11/16
-	//
-	//for(ss=0;ss<numSearchTrials;ss++) { //11/15/10 //add here to have multiple tests as before
-	
-	//	searchTrialLoop2(firms, salaryBill, firmNum, testoutput, round, numMutationPairs, numSearchTrials, mutScale, anotation, cesHedonics, 
-	//			cesHedonicsElastGoods, cesHedonicsElastChars, complementIntConstraintFactor, 
-	//			utility, altUtility, shares, altShares, income, firm1, firm2);	
-			
-
-	
-        //}		//end mutation loop over search trials	
-	
-	
-	//if(round== 54){printf("updated utility for overhead workers in round 55 is %f \n", utility);}     
+		//if(round== 54){printf("updated utility for overhead workers in round 55 is %f \n", utility);}     
 	}			//end search 
 	
 	delete[] shares; //8/2/09

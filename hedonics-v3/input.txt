@@ -1,7 +1,7 @@
 firmNum  1000
 rounds  5000
-randSeedStart 2
-randSeedEnd 2
+randSeedStart 1
+randSeedEnd 1000
 startOutput1  1
 outputFrequency  10
 printRoundsFrequency  1000
@@ -19,7 +19,7 @@ probEffShock  0.001
 probIntegerConstrained  0.0
 probComplements  0.0
 complementIntConstraintFactor  0.1
-numSearchTrials  20
+numSearchTrials  40
 numMutationPairs  2
 probInnovate  0.05
 probUpdateZeroHQElement 0.1
